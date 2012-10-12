@@ -19,9 +19,9 @@
 (defpackage :rollback
   (:use :cl)
   (:export #:rollback-function
-	   #:define-rollback
 	   #:rollback
-	   #:with-rollback))
+	   #:with-rollback
+	   #:with-rollback*))
 
 (in-package :rollback)
 
@@ -33,22 +33,35 @@
 
 (defsetf rollback-function set-rollback-function)
 
-(defmacro define-rollback (op args &body body)
-  (let ((rollback-op (gensym (format nil "ROLLBACK_~A_" (symbol-name op)))))
-    `(flet ((,rollback-op ,args ,@body))
-       (setf (rollback-function op) #',rollback-op))))
-
 (defmacro rollback (op &rest args)
   (let ((rollback-fn (rollback-function op)))
     (unless rollback-fn
       (error "Undefined rollback function for ~S" op))
     `(,rollback-fn ,@args)))
 
-(defmacro with-rollback ((op &rest args) &body body)
-  (let ((rollback (gensym "ROLLBACK-")))
-    `(let ((,rollback t))
-       (,op ,@args)
-       (unwind-protect (prog1 (progn ,@body)
+(defmacro with-rollback ((fun &rest args) &body body)
+  (let ((rollback (gensym "ROLLBACK-"))
+	(g!args (mapcar (lambda (x)
+			  (declare (ignore x))
+			  (gensym "ARG-"))
+			args)))
+    `(let ((,rollback t)
+	   ,@(loop
+		for var in g!args
+		for value in args
+		collect `(,var ,value)))
+       (,fun ,@g!args)
+       (unwind-protect (prog1 ,(if (= 1 (length body))
+				   (car body)
+				   `(progn ,@body))
 			 (setf ,rollback nil))
 	 (when ,rollback
-	   (rollback ,op ,@args))))))
+	   (rollback ,fun ,@g!args))))))
+
+(defmacro with-rollback* (&body forms)
+  (reduce (lambda (body form)
+	    (if body
+		`(with-rollback ,form
+		   ,body)
+		form))
+	  forms))
