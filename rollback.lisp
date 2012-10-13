@@ -33,11 +33,11 @@
 
 (defsetf rollback-function set-rollback-function)
 
-(defmacro rollback (op &rest args)
+(defun rollback (op &rest args)
   (let ((rollback-fn (rollback-function op)))
     (unless rollback-fn
       (error "Undefined rollback function for ~S" op))
-    `(,rollback-fn ,@args)))
+    (apply (rollback-function op) args)))
 
 (defmacro with-rollback ((fun &rest args) &body body)
   (let ((rollback (gensym "ROLLBACK-"))
