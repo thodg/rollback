@@ -37,7 +37,7 @@
   (let ((rollback-fn (rollback-function op)))
     (unless rollback-fn
       (error "Undefined rollback function for ~S" op))
-    (apply (rollback-function op) args)))
+    (apply rollback-fn args)))
 
 (defmacro with-rollback ((fun &rest args) &body body)
   (let ((rollback (gensym "ROLLBACK-"))
@@ -56,7 +56,7 @@
 				   `(progn ,@body))
 			 (setf ,rollback nil))
 	 (when ,rollback
-	   (rollback ,fun ,@g!args))))))
+	   (rollback ',fun ,@g!args))))))
 
 (defmacro with-rollback* (&body forms)
   (reduce (lambda (body form)
@@ -64,4 +64,4 @@
 		`(with-rollback ,form
 		   ,body)
 		form))
-	  forms))
+	  (reverse forms)))
