@@ -19,9 +19,9 @@
 (defpackage :rollback
   (:use :cl)
   (:export #:rollback-function
-	   #:rollback
-	   #:with-rollback
-	   #:with-rollback*))
+           #:rollback
+           #:with-rollback
+           #:with-rollback*))
 
 (in-package :rollback)
 
@@ -41,27 +41,27 @@
 
 (defmacro with-rollback ((fun &rest args) &body body)
   (let ((rollback (gensym "ROLLBACK-"))
-	(g!args (mapcar (lambda (x)
-			  (declare (ignore x))
-			  (gensym "ARG-"))
-			args)))
+        (g!args (mapcar (lambda (x)
+                          (declare (ignore x))
+                          (gensym "ARG-"))
+                        args)))
     `(let ((,rollback t)
-	   ,@(loop
-		for var in g!args
-		for value in args
-		collect `(,var ,value)))
+           ,@(loop
+                for var in g!args
+                for value in args
+                collect `(,var ,value)))
        (,fun ,@g!args)
        (unwind-protect (prog1 ,(if (= 1 (length body))
-				   (car body)
-				   `(progn ,@body))
-			 (setf ,rollback nil))
-	 (when ,rollback
-	   (rollback ',fun ,@g!args))))))
+                                   (car body)
+                                   `(progn ,@body))
+                         (setf ,rollback nil))
+         (when ,rollback
+           (rollback ',fun ,@g!args))))))
 
 (defmacro with-rollback* (&body forms)
   (reduce (lambda (body form)
-	    (if body
-		`(with-rollback ,form
-		   ,body)
-		form))
-	  (reverse forms)))
+            (if body
+                `(with-rollback ,form
+                   ,body)
+                form))
+          (reverse forms)))
